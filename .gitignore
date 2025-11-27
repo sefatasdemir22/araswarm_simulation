@@ -1,0 +1,15 @@
+# Derleme Dosyaları (Gereksiz)
+build/
+install/
+log/
+
+# Python Önbellekleri
+__pycache__/
+*.pyc
+
+# Büyük Mağara Modelleri (Bunu GitHub'a atma, bilgisayarda kalsın)
+src/gas_distribution_sim/models/subt_cave_sim/
+
+# Editör Ayarları (VS Code vb.)
+.vscode/
+.idea/
