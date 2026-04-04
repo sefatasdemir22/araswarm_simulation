@@ -13,3 +13,7 @@ src/gas_distribution_sim/models/subt_cave_sim/
 # Editör Ayarları (VS Code vb.)
 .vscode/
 .idea/
+
+gas_map_logs/
+gas_sensor_logs/
+*.png

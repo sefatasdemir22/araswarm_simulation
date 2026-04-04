@@ -29,7 +29,7 @@ gnome-terminal --tab --title="PX4 Brain" -- bash -c "cd ~/src/PX4-Autopilot/buil
 sleep 5
 
 # 3. DRONE SPAWN
-gnome-terminal --tab --title="Spawn Drone" -- bash -c "source ~/src/PX4-Autopilot/Tools/simulation/gazebo-classic/setup_gazebo.bash ~/src/PX4-Autopilot ~/src/PX4-Autopilot/build/px4_sitl_default; $ROS_SETUP; ros2 run gazebo_ros spawn_entity.py -entity iris -file ~/src/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic/models/iris/iris.sdf -x -2.0 -y 0.0 -z 0.2; exec bash"
+gnome-terminal --tab --title="Spawn Drone" -- bash -c "source ~/src/PX4-Autopilot/Tools/simulation/gazebo-classic/setup_gazebo.bash ~/src/PX4-Autopilot ~/src/PX4-Autopilot/build/px4_sitl_default; $ROS_SETUP; ros2 run gazebo_ros spawn_entity.py -entity iris -file ~/src/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic/models/iris/iris.sdf -x 2.0 -y 0.0 -z 0.2; exec bash"
 
 echo "✅ SİSTEM HAZIR! Drone mağara girişine yerleşti."
 echo "📌 Manuel terminal açarsan şunu source et:"
