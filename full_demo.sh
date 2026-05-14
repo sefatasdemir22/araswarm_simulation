@@ -6,9 +6,11 @@ SCRIPTS_DIR="$REPO_ROOT/src/gas_distribution_sim/scripts"
 GAS_SENSOR_SCRIPT="$SCRIPTS_DIR/gas_sensor_node.py"
 GAS_MAPPER_SCRIPT="$SCRIPTS_DIR/gas_mapper_3d_node.py"
 SAFE_SCAN_SCRIPT="$SCRIPTS_DIR/safe_scan_flight.py"
+EXPERIMENT_SUMMARY_SCRIPT="$SCRIPTS_DIR/experiment_summary.py"
 
 VOXEL_CSV="$HOME/araswarm_ws/gas_map_logs/gas_map_voxel.csv"
 SAMPLES_CSV="$HOME/araswarm_ws/gas_map_logs/gas_map_samples_3d.csv"
+SUMMARY_TXT="$HOME/araswarm_ws/gas_map_logs/experiment_summary.txt"
 
 ROS_SETUP="source /opt/ros/humble/setup.bash; source ~/ros2_ws/install/setup.bash; source ~/araswarm_ws/install/setup.bash"
 
@@ -49,6 +51,9 @@ pkill -9 -f "gas_mapper_3d_node.py" 2>/dev/null || true
 pkill -9 -f "gz sim" 2>/dev/null || true
 sleep 2
 
+log "Eski deney çıktıları temizleniyor..."
+rm -f "$VOXEL_CSV" "$SAMPLES_CSV" "$SUMMARY_TXT"
+
 if ! command -v gnome-terminal >/dev/null 2>&1; then
     log "HATA: gnome-terminal bulunamadı. Demo tabları açılamıyor."
     exit 1
@@ -69,18 +74,18 @@ cd "$REPO_ROOT" || exit 1
 bash "$REPO_ROOT/baslat.sh"
 
 log "PX4 ve Gazebo'nun stabil başlaması bekleniyor..."
-sleep 25
+sleep 12
 
 log "Gaz sensörü yeni gnome-terminal tabında başlatılıyor..."
 open_tab "Gas Sensor" "cd '$REPO_ROOT'; $ROS_SETUP; python3 '$GAS_SENSOR_SCRIPT'"
 
-sleep 3
+sleep 2
 
 log "3B gaz mapper yeni gnome-terminal tabında başlatılıyor..."
 open_tab "Gas Mapper 3D" "cd '$REPO_ROOT'; $ROS_SETUP; python3 '$GAS_MAPPER_SCRIPT'"
 
 log "Mapper'ın abonelikleri ve CSV dosyalarını hazırlaması bekleniyor..."
-sleep 8
+sleep 4
 
 log "Güvenli tarama uçuşu başlatılıyor..."
 cd "$REPO_ROOT" || exit 1
@@ -105,6 +110,13 @@ fi
 if [[ $VOXEL_STATUS -ne 0 || $SAMPLES_STATUS -ne 0 ]]; then
     log "HATA: Demo tamamlandı ancak beklenen CSV çıktılarında eksik/boş dosya var."
     exit 1
+fi
+
+if [[ -f "$EXPERIMENT_SUMMARY_SCRIPT" ]]; then
+    log "Deney özeti üretiliyor..."
+    python3 "$EXPERIMENT_SUMMARY_SCRIPT"
+else
+    log "UYARI: experiment_summary.py bulunamadı, deney özeti atlanıyor."
 fi
 
 log "Demo başarıyla tamamlandı."
