@@ -6,6 +6,10 @@ from mavsdk import System
 from mavsdk.offboard import PositionNedYaw, OffboardError
 
 
+ALTITUDE = -1.5  # NED: negative means up
+YAW_TOWARDS_CAVE = 90.0  # +Y yönüne bak
+
+
 async def wait_until_connected(drone):
     print("Bağlantı bekleniyor...")
     async for state in drone.core.connection_state():
@@ -22,7 +26,7 @@ async def wait_until_ready(drone):
             return
 
 
-async def goto(drone, north, east, down, yaw_deg=0.0, wait_sec=6):
+async def goto(drone, north, east, down=ALTITUDE, yaw_deg=0.0, wait_sec=6):
     print(f"Setpoint → N:{north:.2f} E:{east:.2f} D:{down:.2f} Yaw:{yaw_deg:.1f}")
     await drone.offboard.set_position_ned(
         PositionNedYaw(north, east, down, yaw_deg)
@@ -39,7 +43,7 @@ async def main():
 
     print("İlk setpoint gönderiliyor...")
     await drone.offboard.set_position_ned(
-        PositionNedYaw(0.0, 0.0, -1.5, 0.0)
+        PositionNedYaw(0.0, 0.0, ALTITUDE, YAW_TOWARDS_CAVE)
     )
 
     print("Arm...")
@@ -54,27 +58,63 @@ async def main():
         return
 
     try:
-        print("Safe scan başlıyor...")
+        print("Görev odaklı güvenli +Y mağara uçuşu başlıyor...")
 
-        # 1) Kalkış / hover
-        await goto(drone, 0.0, 0.0, -1.5, 0.0, 6)
+        # 1) Kalkış / stabil hover
+        await goto(drone, 0.0, 0.0, ALTITUDE, YAW_TOWARDS_CAVE, 6)
 
-        # 2) Küçük güvenli tarama alanı
-        # Girişe yakın, kısa sweep
-        await goto(drone, 1.5, 0.0, -1.5, 0.0, 7)
-        await goto(drone, 1.5, 1.0, -1.5, 0.0, 6)
-        await goto(drone, 0.5, 1.0, -1.5, 0.0, 7)
-        await goto(drone, 0.5, 2.0, -1.5, 0.0, 6)
-        await goto(drone, 1.8, 2.0, -1.5, 0.0, 7)
+        # FAZ 1: Mağara girişine düz +Y hattından yaklaşma
+        print("FAZ 1: Mağara girişine düz yaklaşma...")
+        approach_points = [
+            (0.0, 2.0, 6),
+            (0.0, 4.0, 6),
+            (0.0, 6.0, 6),
+            (0.0, 8.0, 6),
+        ]
 
-        # 3) Kısa hover
-        print("Hover...")
+        for north, east, wait_sec in approach_points:
+            await goto(drone, north, east, ALTITUDE, YAW_TOWARDS_CAVE, wait_sec)
+
+        # FAZ 2: Mağara içinde kısa X sağ-sol taraması
+        print("FAZ 2: Mağara içi kısa koridor taraması...")
+        corridor_scan_points = []
+        for y in [9.0, 10.0]:
+            corridor_scan_points.extend([
+                (0.0, y, 6),
+                (0.4, y, 4),
+                (-0.4, y, 4),
+                (0.0, y, 4),
+            ])
+
+        for north, east, wait_sec in corridor_scan_points:
+            await goto(drone, north, east, ALTITUDE, YAW_TOWARDS_CAVE, wait_sec)
+
+        # Mapper'ın son verileri yazması için kısa hover
+        print("Tarama sonu hover...")
         await asyncio.sleep(5)
 
-        # 4) Başlangıca yakın dönüş
-        await goto(drone, 0.5, 0.5, -1.5, 0.0, 6)
+        # FAZ 3: Merkez hat üzerinden güvenli geri dönüş
+        print("FAZ 3: Merkez hattan güvenli dönüş...")
+        return_points = [
+            (0.0, 8.0, 6),
+            (0.0, 6.0, 6),
+            (0.0, 4.0, 6),
+            (0.0, 2.0, 6),
+            (0.0, 0.5, 6),
+        ]
+
+        for north, east, wait_sec in return_points:
+            await goto(drone, north, east, ALTITUDE, YAW_TOWARDS_CAVE, wait_sec)
 
     finally:
+        print("Yumuşak iniş hazırlığı...")
+
+        # Aynı noktada, daha uzun ve yumuşak kademeli alçalma
+        await goto(drone, 0.0, 0.5, -1.2, YAW_TOWARDS_CAVE, 4)
+        await goto(drone, 0.0, 0.5, -0.9, YAW_TOWARDS_CAVE, 4)
+        await goto(drone, 0.0, 0.5, -0.6, YAW_TOWARDS_CAVE, 4)
+        await goto(drone, 0.0, 0.5, -0.4, YAW_TOWARDS_CAVE, 4)
+
         print("Offboard stop...")
         try:
             await drone.offboard.stop()
@@ -83,7 +123,7 @@ async def main():
 
         print("Landing...")
         await drone.action.land()
-        await asyncio.sleep(10)
+        await asyncio.sleep(20)
 
         print("Safe scan tamamlandı.")
 
