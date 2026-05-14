@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import csv
+import math
 import os
 import sys
 
@@ -29,6 +30,7 @@ def read_samples(csv_path):
         reader = csv.DictReader(f)
         for row in reader:
             samples.append({
+                'ros_time_sec': float(row['ros_time_sec']),
                 'x': float(row['x']),
                 'y': float(row['y']),
                 'z': float(row['z']),
@@ -90,6 +92,17 @@ def build_summary(samples, voxels, active_scenario):
     voxel_avg_ppm = sum(voxel_avg_ppms) / filled_voxels
     max_voxel = max(voxels, key=lambda v: v['avg_ppm'])
     warn_mixed_logs = abs(max_sample['ppm'] - max_voxel['avg_ppm']) > 1.0
+    path_length_3d = compute_path_length_3d(samples)
+    mission_duration_sec = samples[-1]['ros_time_sec'] - samples[0]['ros_time_sec']
+    sample_frequency_hz = total_samples / mission_duration_sec if mission_duration_sec > 0.0 else 0.0
+    coordinate_distance = distance_3d(
+        max_sample['x'],
+        max_sample['y'],
+        max_sample['z'],
+        max_voxel['center_x'],
+        max_voxel['center_y'],
+        max_voxel['center_z']
+    )
 
     lines = [
         'Deney Özeti',
@@ -124,6 +137,16 @@ def build_summary(samples, voxels, active_scenario):
             f'iy={max_voxel["voxel_iy"]}, '
             f'iz={max_voxel["voxel_iz"]}'
         ),
+        '',
+        'Görev ve Kapsama Özeti',
+        '----------------------',
+        f'Yaklaşık 3B yol uzunluğu : {path_length_3d:.3f} m',
+        f'Yaklaşık görev süresi    : {mission_duration_sec:.3f} sn',
+        f'Ortalama örnekleme frekansı: {sample_frequency_hz:.3f} Hz',
+        (
+            'Haritalama kapsaması     : '
+            f'{filled_voxels} dolu voxel, {total_samples} toplam sample ile temsil edildi.'
+        ),
     ]
 
     if warn_mixed_logs:
@@ -132,12 +155,45 @@ def build_summary(samples, voxels, active_scenario):
             'UYARI: Sample ve voxel istatistikleri arasında fark var. Eski loglar karışmış olabilir.'
         ])
 
+    lines.extend([
+        '',
+        'Yoğunluk Tutarlılık Yorumu',
+        '--------------------------',
+        f'Sample-voxel maksimum koordinat uzaklığı: {coordinate_distance:.3f} m'
+    ])
+
+    if coordinate_distance <= 1.0:
+        lines.append('Gaz yoğunluğu ölçümleri voxel haritası ile tutarlı görünmektedir.')
+    else:
+        lines.append('Sample ve voxel yoğunluk bölgeleri arasında fark vardır; loglar veya grid çözünürlüğü kontrol edilmelidir.')
+
     if active_scenario:
         lines.append(f'Aktif senaryo            : {active_scenario}')
     else:
         lines.append('Aktif senaryo            : bulunamadı')
 
     return lines
+
+
+def distance_3d(x1, y1, z1, x2, y2, z2):
+    dx = x1 - x2
+    dy = y1 - y2
+    dz = z1 - z2
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+
+def compute_path_length_3d(samples):
+    total = 0.0
+    for previous, current in zip(samples, samples[1:]):
+        total += distance_3d(
+            previous['x'],
+            previous['y'],
+            previous['z'],
+            current['x'],
+            current['y'],
+            current['z']
+        )
+    return total
 
 
 def write_summary(lines, output_path):

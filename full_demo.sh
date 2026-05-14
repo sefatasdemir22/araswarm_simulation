@@ -74,18 +74,18 @@ cd "$REPO_ROOT" || exit 1
 bash "$REPO_ROOT/baslat.sh"
 
 log "PX4 ve Gazebo'nun stabil başlaması bekleniyor..."
-sleep 12
+sleep 4
 
 log "Gaz sensörü yeni gnome-terminal tabında başlatılıyor..."
 open_tab "Gas Sensor" "cd '$REPO_ROOT'; $ROS_SETUP; python3 '$GAS_SENSOR_SCRIPT'"
 
-sleep 2
+sleep 1
 
 log "3B gaz mapper yeni gnome-terminal tabında başlatılıyor..."
 open_tab "Gas Mapper 3D" "cd '$REPO_ROOT'; $ROS_SETUP; python3 '$GAS_MAPPER_SCRIPT'"
 
 log "Mapper'ın abonelikleri ve CSV dosyalarını hazırlaması bekleniyor..."
-sleep 4
+sleep 1
 
 log "Güvenli tarama uçuşu başlatılıyor..."
 cd "$REPO_ROOT" || exit 1
